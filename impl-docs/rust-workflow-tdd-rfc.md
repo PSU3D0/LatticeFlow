@@ -175,6 +175,84 @@ Authors/Agents -> Macro DSL -> Flow IR -> Validator -> ExecPlan -> Host Adapter 
 - Determinism: EventTime windows with bounded lateness qualify for `Stable`; ProcessingTime windows are `BestEffort`.
 - Temporal lowering schedules timers for window close and watermark advancement; late arrivals dispatch child activities annotated with compensation metadata.
 
+### 4.9 Code-first control-flow hints
+- Authors continue to write idiomatic Rust (`match`, `if let`, `for`, `while`) but opt into richer orchestration semantics by wrapping those constructs with lightweight helpers. Each helper emits a `ControlSurfaceIR` entry (§5.2.2) so schedulers, UI, and policy engines see explicit branch labels, partition keys, and retry semantics.
+- When a helper is recommended but not used, the compiler emits `CTRL001` with guidance (“Wrap this loop in `for_each!` to unlock partition-aware batching and policy enforcement”). Warnings stay informational unless `policies.lint.require_control_hints` elevates them.
+- Import/export tooling never rewrites author code; it consumes the IR surfaces. Rust remains the source of truth while n8n-style features (visual branching, metrics, linting) stay available.
+
+#### 4.9.1 Branching surfaces (`switch!`, `if!`)
+- `switch!(expr, cases = { label if predicate => edge, ... })` declares multi-way branching with explicit labels. The macro expands to normal Rust, so `expr` can be any value and predicates are just boolean expressions.
+- `if!(cond, then = edge_a, else = edge_b)` is the single-branch shorthand; it still records the control surface so case labels show up in Studio and policy can reason about fall-through.
+- Attribute sugar preserves raw `match` ergonomics: `let route = #[flow::switch(risk)] match risk.score { s if s > 80.0 => Risk::High, _ => Risk::Low };` desugars to `switch!` while keeping Rust’s pattern matching, guards, and exhaustiveness checking.
+
+**Simple** — binary branch with connector nodes:
+```rust
+let route = switch!(risk, cases = {
+    "ManualReview" if risk.score > 70.0 => manual_review,
+    "Auto" => auto_charge,
+});
+connect!(route.case("ManualReview") -> connectors::slack::SendAlert::new());
+connect!(route.case("Auto") -> connectors::stripe::Charge::new());
+```
+
+**Complex** — pattern guards with native `match` syntax:
+```rust
+let decision = #[flow::switch(order)] match &order.channel {
+    Channel::Marketplace(v) if v.is_high_value() => Case::MarketplaceHigh,
+    Channel::Direct(_) if order.total > Decimal::from(500) => Case::DirectHigh,
+    _ => Case::Standard,
+};
+connect!(decision.case("MarketplaceHigh") -> escalate);
+connect!(decision.case("DirectHigh") -> capture_id_check);
+connect!(decision.case("Standard") -> fulfill);
+```
+
+#### 4.9.2 Looping and iteration (`for_each!`, `loop!`)
+- `for_each!(items, item => node, key = expr)` wraps a `for` loop, emitting a control surface that documents the iteration source, concurrency hints, and optional partition key. Bodies remain pure Rust; the macro only annotates the loop for scheduling.
+- `loop!(label, break_on = expr, body = { ... })` is the cooperative retry helper: it surfaces the loop bounds while authoring continues to use `while`/`loop` internally.
+- Attribute form mirrors the branching sugar: `#[flow::for_each(key = |c| c.customer_id)] for chunk in order.items.chunks(25) { ... }` lowers to `for_each!` but keeps direct access to Rust iteration adapters.
+
+**Simple** — batching items with inline logic:
+```rust
+let sanitize = for_each!(order.items, item => SanitizeItem, key = |i| i.sku.clone(), batch = 50);
+connect!(sanitize -> connectors::inventory::Reserve::new());
+```
+
+**Complex** — native syntax with partition-aware loop:
+```rust
+let bucket_stats = #[flow::for_each(key = |bucket: &Bucket| bucket.customer.clone(), concurrency = 4)]
+for bucket in buckets(order) {
+    compute_custom_stats(&bucket)                        // arbitrary Rust
+};
+connect!(bucket_stats -> connectors::warehouse::UpsertMetrics::new());
+```
+
+#### 4.9.3 Temporal, rate, and partition surfaces
+- `partition_by!(target, key = expr, strategy = ChildWorkflow|LocalShard)` documents sharding so queue/Temporal hosts can spawn per-partition activities and policy can enforce fairness.
+- `window!(...)` (or the `Window::*` nodes) already expose tumbling/sliding/session semantics; when combined with `partition_by!` they give schedulers enough metadata to place child workflows and configure timers (§4.8.1).
+- `timeout!(scope, duration, behaviour = Cancel|Retry|DeadLetter)` records watchdog policy for nodes, edges, or subflows. Runtime hooks it to kernel timers; Temporal maps it to `ScheduleToClose`.
+- `rate_limit!(scope, qps, burst, smoothing)` converts to a `ControlSurfaceKind::RateLimit`, allowing per-scope throttles to merge with tenant budgets.
+
+**Example**:
+```rust
+partition_by!(upsert, key = |row: &MetricRow| row.customer_id.clone(), strategy = ChildWorkflow);
+window!(agg, kind = "tumbling", size = "PT5M", allowed_lateness = "PT2M", watermark = "max(ts)-PT2M");
+timeout!(scope = upsert, duration = "PT30S", behaviour = Retry);
+rate_limit!(scope = workflow, qps = 2000, burst = 4000);
+```
+
+#### 4.9.4 Reliability surfaces (`on_error!`, `delivery!`, `compensate`)
+- `delivery!(edge, ExactlyOnce|AtLeastOnce|AtMostOnce)` declares delivery guarantees and binds to dedupe/control metadata. Exactly-once edges require a `DedupeStore` capability and an idempotent sink contract (§5.4).
+- `on_error!(scope, strategy = Retry {...} | DeadLetter {...} | Compensate { upstream = node_id } | Halt)` surfaces retry ownership and unwind strategies so both Temporal and queue hosts make identical decisions.
+- `compensate` remains a node attribute (`#[node(..., compensate=Refund)]` or connector manifest field). The control surface records the relationship so policy can mandate compensators for critical capabilities.
+
+**Example**:
+```rust
+delivery!(charge_edge, ExactlyOnce);
+on_error!(scope = fulfill, strategy = Compensate { upstream = charge });
+on_error!(scope = notify, strategy = DeadLetter { queue = "notifications_dlq" });
+```
+
 ---
 
 ## 5. Flow IR Specification
@@ -189,9 +267,13 @@ struct FlowIR {
     nodes: Vec<NodeIR>,
     edges: Vec<EdgeIR>,
     checkpoints: Vec<CheckpointIR>,
+    control_surfaces: Vec<ControlSurfaceIR>,
     policies: FlowPolicies,
     metadata: FlowMetadata,
+    artifacts: Vec<ArtifactRef>,
 }
+
+> Canonical serialization lives in `schemas/flow_ir.schema.json` (JSON Schema draft 2020-12). The schema ships with a representative example (`examples[0]`) covering partitions, windows, compensation, and policy bindings so downstream tooling can validate without linking against the Rust types. A concrete artifact is checked in at `schemas/examples/etl_logs.flow_ir.json` for contract tests and sample agent interactions.
 
 struct EdgeIR {
     from: NodeId,
@@ -224,6 +306,21 @@ struct NodeIR {
     docs: NodeDocs,
 }
 
+struct ControlSurfaceIR {
+    id: SurfaceId,
+    kind: ControlSurfaceKind,
+    targets: Vec<TargetRef>,          // node ids or edge ids
+    config: serde_json::Value,        // type-specific payload
+    origin: SourceSpan,               // macro span for diagnostics
+    lint: Option<LintHint>,           // opt-in suggestions (e.g., to wrap raw loops)
+}
+
+struct ArtifactRef {
+    kind: ArtifactKind,               // dot, wit, json-schema, etc.
+    path: PathBuf,
+    format: Option<String>,
+}
+
 struct CacheSpec {
     key: KeyExpr,
     tier: CacheTier,
@@ -252,6 +349,8 @@ struct IdempotencyKeySpec {
 - `CacheSpec`: optional cache description for Strict/Stable nodes including deterministic key, tier, TTL, and invalidation triggers.
 - `CacheTier`: enumerates storage tiers (`Memory`, `Disk`, `Remote(region)`); policy may restrict tiers per profile.
 - `CacheInvalidate`: `SchemaBump`, `EgressChange`, `CapabilityUpgrade`, `PolicyRule(Name)`.
+- `ControlSurfaceKind`: `Switch`, `If`, `Loop`, `ForEach`, `Window`, `Partition`, `Merge`, `Join`, `Zip`, `ErrorHandler`, `Timeout`, `RateLimit`; each entry references the nodes/edges it governs plus macro origin metadata.
+- `ArtifactKind`: exported artifacts persisted with the IR (`dot`, `wit`, `json-schema`, provider manifests) consumed by registry and Studio tooling.
 - Stable caches require pinned resource identifiers (`PinnedUrl`, `VersionId`, `HashRef`). Missing pins downgrade determinism and trigger `CACHE002`.
 - Cache entries record provenance (schema version, capability version, egress hash); mismatches invalidate entries automatically to prevent poisoning.
 - Cold-start behavior defaults to singleflight recompute to avoid thundering herd; policy can dictate prewarm fixtures.
@@ -265,6 +364,19 @@ struct IdempotencyKeySpec {
 - **Scope composition**: for `IdemScope::Partition`, the partition hash is appended prior to hashing. Edge scope introduces upstream edge id in the CBOR map.
 - **Test vectors**: repository ships three fixtures (JSON + expected BLAKE3 digest) to keep implementations consistent across languages.
 - **Collision policy**: hashes are treated as opaque identifiers; collision detection triggers fail-close behavior with operator alerting.
+
+### 5.2.2 Control-flow surfaces (opt-in)
+- Control constructs are captured in `control_surfaces: Vec<ControlSurfaceIR>` so planners, Studio, and import/export tooling can reason about branching, looping, and temporal semantics without re-parsing Rust. Surfaces are emitted only when the related macro or helper is used; plain Rust loops/branches still work, but the validator can surface a `CTRL001 MissingControlSurfaceHint` warning when `policies.lint.require_control_hints == true`.
+- **Switch/If**: produced by `Switch::<T>::new`, `If::<T>::new`, or `match!` helper macros. Config: `{ cases: [{ label, predicate, edges[] }], default_case }`. Drives UI widgets for branch editing and importer mapping from n8n “Split in Batches/If”.
+- **Loop/ForEach**: optional `loop!`/`for_each!` wrappers annotate `for`/`while` constructs with `{ kind: While|Until|ForEach, break_on, concurrency_hint }`. When absent, analysis treats the loop as opaque Rust and may downgrade determinism if it detects unbounded iteration.
+- **Partition**: `partition_by!` annotates edges with `{ hash, expression, routing = ChildWorkflow|LocalShard }` and binds shard-count hints used by queue/Temporal hosts (§5.5).
+- **Window**: `window!` or `Window::tumbling/sliding/session` nodes register `{ window, size, allowed_lateness, watermark, lateness_output }` so Temporal lowering can emit timers.
+- **Merge/Join/Zip**: emitted by corresponding std combinators. Config: `{ type: Merge|Join|Zip, keyed: bool, key_expr, ordering_contract }`; allows determinism and backpressure rules to validate fan-in/fan-out.
+- **ErrorHandler**: `on_error!` produces surfaces describing `{ scope, strategy, retry, dead_letter }` to keep runtime/orchestrator retries aligned.
+- **Timeout**: `timeout!` writes `{ scope, duration, behaviour = Cancel|Retry|DeadLetter }`; Temporal maps to `ScheduleToClose` while queue host wires watchdogs.
+- **RateLimit**: `rate_limit!` surfaces `{ scope, qps, burst, smoothing }` so policy can merge runtime quotas with tenant budgets.
+- **Respond policy**: `HttpTrigger::respond(...)` and `Respond(stream=...)` register surfaces describing handshake deadlines, streaming semantics, and cancellation wiring.
+- Additional macros (`hitl!`, `delivery!`, `vars!`) map to existing `CheckpointIR`, `EdgeIR.delivery`, and `FlowPolicies` respectively and do not get their own control surface entries.
 
 ### 5.3 Derived metadata
 - Aggregated effects/determinism (for entire flow).

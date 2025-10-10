@@ -1,7 +1,3 @@
-You're \~85% there on architecture and semantics. What’s **missing** (and what coding agents need) is a **prescriptive crate surface + buildout plan** with: clear layering, public APIs, features, sequencing, test harnesses, and **Definitions of Done** (DoD). Below is a rigorous addendum you can drop into the RFC as **Section “Crate Surface & Buildout Plan (v1)”**.
-
----
-
 ## A. Workspace layout (authoritative)
 
 ```
@@ -168,7 +164,7 @@ Each phase includes: scope, artifacts, tests, and the **checklist that CI must p
 * Unit: all macro errors; IR round‑trip.
 * Property: `Join/Merge` invariants (no loss/dup).
 * Golden: S1‑Echo flow compiles & exports DOT.
-  **DoD:** `flows graph check examples/s1_echo` passes; coverage ≥ 80% for `dag-macros`.
+  **DoD:** `flows graph check examples/s1_echo` passes; coverage ≥ 80% for `dag-macros`; JSON Schema + example emitted at `schemas/flow_ir.schema.json`.
 
 ### Phase 2 — **In‑proc executor + Web host**
 
