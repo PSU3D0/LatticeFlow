@@ -246,8 +246,31 @@ rate_limit!(scope = workflow, qps = 2000, burst = 4000);
 - `on_error!(scope, strategy = Retry {...} | DeadLetter {...} | Compensate { upstream = node_id } | Halt)` surfaces retry ownership and unwind strategies so both Temporal and queue hosts make identical decisions.
 - `compensate` remains a node attribute (`#[node(..., compensate=Refund)]` or connector manifest field). The control surface records the relationship so policy can mandate compensators for critical capabilities.
 
+##### Generic nodes & trait bounds
+
+The `#[node]` / `subflow!` macros can support Rust generics and trait bounds (e.g., `#[node] pub async fn map<T: Serialize + JsonSchema>(...)`). At expansion time we can monomorphise each instantiation, but a few caveats apply:
+
+- **Schema emission:** Flow IR must capture concrete JSON Schemas. Using open-ended trait bounds (`T: Serialize`) doesn’t give us enough to emit a stable schema; requiring `T: JsonSchema` or concrete enum wrappers keeps schemas deterministic.
+- **Importer/Studio expectations:** Agents and tooling expect a finite set of inputs/outputs. Allowing “any `T`” makes Flow IR harder to reason about and complicates code generation for connectors.
+- **Best practice:** prefer explicit enums or struct wrappers for the supported payloads (e.g., `enum ExtractionInput { Labs(LabPage), Imaging(ImagingPage) }`). Each variant carries `JsonSchema`, and the Flow IR exports a `oneOf` schema naturally. This matches policy-driven validation and keeps Studio UX predictable.
+- **Helper macro:** use `#[flow_enum]` (from `dag-macros`) to tag these enums with the canonical derives (`serde::Serialize`, `serde::Deserialize`, `schemars::JsonSchema`) and `#[serde(tag = "type")]`. This keeps runtime schemas consistent and ensures agents do not forget the required annotations.
+
+We can still offer generic helpers for author ergonomics, but workflow definitions should instantiate them with concrete types so Flow IR remains fully specified.
+
 **Example**:
 ```rust
+#[flow_enum]
+pub enum ExtractionInput {
+    Labs(LabPage),
+    Imaging(ImagingPage),
+    Notes { physician: String, contents: String },
+}
+
+#[node(name = "RouteExtraction", effects = "Pure", determinism = "Strict")]
+async fn route(input: ExtractionInput) -> NodeResult<ExtractionInput> {
+    Ok(input)
+}
+
 delivery!(charge_edge, ExactlyOnce);
 on_error!(scope = fulfill, strategy = Compensate { upstream = charge });
 on_error!(scope = notify, strategy = DeadLetter { queue = "notifications_dlq" });
@@ -293,6 +316,7 @@ struct NodeIR {
     out_schema: SchemaRef,
     effects: Effects,
     determinism: Determinism,
+    determinism_hints: Vec<String>,
     schedule: ScheduleHints,
     retry_owner: RetryOwner,
     idem: IdempotencySpec,
@@ -651,6 +675,8 @@ Strict < Stable < BestEffort < Nondeterministic
 
 ### 8.3 Enforcement mechanisms
 - Compile-time: macros derive defaults; authors can tighten if compliant. Lints detect contradictions (Clock/Rng without seed, unpinned HTTP) and emit DET30x errors. Missing idempotency on effectful nodes fails DAG004.
+- Shared registry: `dag_core::determinism` exposes the canonical map of resource hints (e.g., `resource::clock`, `resource::rng`) to minimum determinism levels. Macros and plugins record hints when they detect sensitive resources; the validator raises `DET302` if a node claims a stricter level than the registry permits. Crates can extend the registry at runtime to cover new capability families without modifying the core runtime.
+- Effect registry: `dag_core::effects_registry` mirrors the determinism flow for side-effects. Built-in hints cover HTTP/database writes; connectors register additional hints (e.g., `connector::stripe::charge`). Validation emits `EFFECT201` when a node claims `Pure`/`ReadOnly` despite the registry requiring `Effectful`. Defaults remain pessimistic; authors must opt in to stronger guarantees consciously.
 - Build-time: capability typestates reject misuse (e.g., calling `HttpRead::get` inside a `Strict` node). The compiler prevents linking ReadOnly nodes against write traits.
 - Registry-time: certification executes record/replay—`Strict` must be byte-identical, `Stable` must emit identical logical results with pinned references (hash recorded). Failures block publish.
 - Runtime: policy engine enforces tenant rules (e.g., forbid `BestEffort` in financial orgs) and can require HITL or caching for downgraded segments.
