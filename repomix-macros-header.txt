@@ -1,0 +1,13 @@
+# Agent Briefing: Host Adapters & Entrypoint Macros
+
+You are designing the developer surface that lets the same LatticeFlow flow run in containers, WASI/wasmtime, and Cloudflare Workers. Use the bundled sources to reason about:
+- How dag-macros, capability hints, and example flows should evolve to offer #[entry_*] macros that emit host-specific bootstraps while keeping user code host-agnostic.
+- Patterns for default vs explicit capability selection ("caps=auto" vs per-domain overrides) and how to surface optional facets (e.g., HTTP mTLS) safely.
+- What validation, docs, and scaffolding (examples/tests) are required so engineers understand portability guarantees and host-specific opt-ins.
+- How to stage the work: macro API design, example rewrites, CI matrix, developer ergonomics.
+
+Produce recommended API designs (with macro signatures and expansion sketches), migration notes for existing flows, risk ledger, and next steps for tooling and documentation.
+
+Read the repository snapshot in full before you answer; do not assume any context beyond this briefing and the selected files.
+
+---

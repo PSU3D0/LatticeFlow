@@ -1,0 +1,13 @@
+# Agent Briefing: Kernel Portability & Spill Refactor
+
+You are advising on how to bring LatticeFlow's runtime and capability system to a "build once, run anywhere" posture spanning containers, WASI/wasmtime, and Cloudflare Workers. Study the bundled sources and propose concrete paths to:
+- Refactor spill handling into a capability-backed abstraction (durable stores, tier policies, error semantics) so kernels avoid direct filesystem calls and survive constrained hosts.
+- Stabilize the capability trait surface (HTTP/KV/Blob/Queue/Spill/etc.) while letting hosts supply custom implementations or facets (e.g., mTLS, zero-copy) without breaking portability guarantees.
+- Map Flow IR buffer metadata (spill tiers, thresholds, determinism) into host-specific resource choices and validation rules that fail fast when a host cannot honor a requirement.
+- Outline the build/feature matrix, WASI vs container vs Workers boundaries, and the incremental migration plan mentioned in the chat.
+
+Deliver a step-by-step architecture plan, risks with mitigations, open questions for ops/platform owners, and quick-win prototypes/tests that de-risk the changes.
+
+Read every file below carefully; do not assume context beyond what is provided here or in the chat summary.
+
+---

@@ -1,0 +1,17 @@
+# Agent Deliberation Kickoff
+
+You are an ultra-high-intelligence architect advising on how to extend LatticeFlow with a generic SQL capability that can target multiple backends (e.g., Postgres, MySQL, SQLite, cloud warehouses). Use the context below to reason deeply about:
+- How existing capability abstractions (dag-core, capabilities crate, kernel plan/exec, macros) should evolve to model SQL interactions.
+- Whether the adapter surface should expose raw SQL primitives, higher-level dataframe/table APIs, or a hybrid; consider determinism, idempotency, and effect tracking requirements.
+- Connection management, query planning, schema discovery, and how to express migrations or result hydration within the current IR.
+- Testing, certification, and incremental delivery strategy so new SQL capability lands safely and unlocks downstream flows.
+
+Deliver:
+1. A phased architecture plan (core data model updates, adapter traits, execution semantics, CLI touchpoints).
+2. A comparison of API surface options with pros/cons and recommended direction.
+3. A risk ledger with mitigations and open questions for product/platform stakeholders.
+4. Suggestions for prototypes or instrumentation to validate early.
+
+Read the repository snapshot below in full before answering; do not assume context beyond what is provided.
+
+---
