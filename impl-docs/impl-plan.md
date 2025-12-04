@@ -58,18 +58,20 @@
 **Scope**
 - Implement `kernel-exec` (Tokio-based scheduler, bounded channels, cancellation, backpressure) (`rust-workflow-tdd-rfc.md:333`).
 - Implement backpressure metrics + cancellation propagation (`rust-workflow-tdd-rfc.md:423`–`441`).
-- Build `host-web-axum`: HttpTrigger, Respond bridge, SSE streaming, deadlines (`surface-and-buildout.md:173`).
+- Build the HTTP bridge (`host-web-axum`) that translates requests into canonical invocations (including metadata forwarding) and delegates execution to the shared `host-inproc` runtime which now includes environment plugin hooks.
 - Add capability registry + minimal capability implementations (`capabilities` crate) for HttpRead/Write, Clock, etc.
+- Expand capability hint taxonomy (`resource::kv`, `resource::blob`, `resource::queue`, `resource::db::read`) with in-memory stubs (`MemoryKv`, `MemoryBlobStore`, `MemoryQueue`) so validators fire without waiting on platform adapters.
 - Implement inline cache stub (memory) to satisfy Strict/Stable nodes w/out hitting policy errors (no remote caches yet).
 
 **Tests**
-- Unit tests: channel backpressure stalls, cancellation propagation, SSE streaming bridging.
-- Integration: run `examples/s1_echo`, `examples/s2_site` via CLI `flows run local` hitting HTTP endpoints.
-- Property: token bucket rate limiter stays within error tolerance.
+- Unit tests: channel backpressure stalls, cancellation propagation, streaming captures (`streaming_capture_emits_events`, `dropping_stream_cancels_run`), and executor metrics assertions built with `DebuggingRecorder`.
+- Integration: CLI `flows run local --example s1_echo` via `assert_cmd`; SSE coverage via `flows run local --example s2_site --stream` and `flows run serve --example s2_site` hitting `/site/stream` with `reqwest` + `timeout`; CLI JSON mode exercised by `run_local_emits_json_summary`.
+- Regression harness: binary-level CLI tests live in `crates/cli/tests/` covering `run local` (value + stream + json summary) and Axum host wiring/metrics (`records_host_metrics_for_success`).
+- Property-based coverage: executor backpressure invariants (`flow_instance_respects_capture_capacity`), SSE ordering (`sse_stream_preserves_event_sequence`), validator hint combinations (`fuzz_registry_hint_enforcement`), and CLI payload normalisation (`run_local_handles_property_inputs`). Metadata forwarding and environment plugin wiring are covered by host-inproc/host-web-axum tests.
 
 **Exit criteria**
-- `flows run local` executes S1 with p95 < 50ms, `flows run serve` hosts S2 with SSE tests.
-- Kernel metrics exposed via structured logging.
+- `flows run local` executes S1 within latency budget, and `flows run serve` hosts S2 with SSE smoke tests.
+- Executor/host metrics (`latticeflow.executor.*`, `latticeflow.host.*`) and CLI summaries (`--json` + stderr text) land per RFC §14.
 
 **CLI milestone**: first `flows run local` success.
 
@@ -80,7 +82,7 @@
 **References**: RFC §6.4 (queue), §5.2 (Idempotency), §5.4 (validation pipeline), user story S3, acceptance criteria (Idempotency/Windowing).
 
 **Scope**
-- Implement `host-queue-redis`: ingestion, worker loop, visibility timeouts, dedupe integration.
+- Leverage the shared `host-inproc` runtime and implement `bridge-queue-redis` as a bridge handling ingestion, worker loop, visibility timeouts, and dedupe integration.
 - Build `cap-dedupe-redis`, `cap-cache-redis`, `cap-blob-fs` for spill (`surface-and-buildout.md:185`).
 - Extend validator: enforce `Delivery::ExactlyOnce` prerequisites, idempotency TTLs, cache requirements.
 - Implement spill-to-blob + resume logic in kernel.

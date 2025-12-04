@@ -1,0 +1,24 @@
+[package]
+name = "host-inproc"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Shared in-process host runtime for executing validated flows." 
+
+[dependencies]
+dag-core = { path = "../dag-core" }
+kernel-exec = { path = "../kernel-exec" }
+kernel-plan = { path = "../kernel-plan" }
+capabilities = { path = "../capabilities" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

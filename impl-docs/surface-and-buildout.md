@@ -7,8 +7,9 @@
   /dag-macros              # #[node], #[trigger], workflow!, subflow!, inline_node!
   /kernel-plan             # IR validator + lowering -> ExecPlan
   /kernel-exec             # in-proc executor (Tokio), scheduler, backpressure
-  /host-web-axum           # Axum adapter (HttpTrigger, Respond bridge, SSE)
-  /host-queue-redis        # Queue adapter (Redis), ack/dedupe integration
+  /host-inproc             # Shared runtime harness reused by bridges
+  /host-web-axum           # Axum bridge (HttpTrigger, Respond bridge, SSE)
+  /bridge-queue-redis      # Queue bridge (Redis), ack/dedupe integration
   /host-temporal           # Temporal codegen (Go/TS) + Rust activity worker
   /plugin-wasi             # Wasmtime host, WIT world, capability shims
   /plugin-python           # gRPC plugin host + sandbox policies
@@ -16,8 +17,9 @@
   /cap-http-reqwest        # concrete Http impl (read/write); rate-limit/backoff
   /cap-kv-sqlite           # local kv read/write; used for tests/dev
   /cap-blob-fs             # fs blob store; “by_hash” Strict reads
-  /cap-dedupe-redis        # DedupeStore impl
-  /cap-cache-redis         # Cache impl
+  /contrib/redis/cap-redis        # Shared Redis plumbing
+  /contrib/redis/cap-dedupe-redis # DedupeStore impl
+  /contrib/redis/cap-cache-redis  # Cache impl
   /exporters               # serde_json, dot, wit
   /policy-engine           # CEL-based policy, compilation stages, evidence
   /registry-client         # read/publish artifacts, signatures, SBOM ingest
@@ -107,8 +109,8 @@ impl Kernel {
 
 ### B5. Host adapters
 
-* `host-web-axum::AxumAdapter::mount(kernel, routes...)`
-* `host-queue-redis::QueueAdapter::enqueue/run_workers(...)`
+* `host-web-axum::AxumBridge::mount(kernel, routes...)`
+* `bridge-queue-redis::QueueBridge::enqueue/spawn_workers(...)`
 * `host-temporal::{generate_workflow_code, ActivityWorker::run(...)}`
 
 ### B6. Capabilities (typestates)
@@ -178,7 +180,7 @@ Each phase includes: scope, artifacts, tests, and the **checklist that CI must p
 
 ### Phase 3 — **Queue/Redis + Dedupe + Idempotency**
 
-**Scope:** `host-queue-redis`, `cap-dedupe-redis`, `cap-cache-redis`, spill to `cap-blob-fs`.
+**Scope:** `bridge-queue-redis`, `contrib/redis/cap-dedupe-redis`, `contrib/redis/cap-cache-redis`, spill to `cap-blob-fs`.
 **Artifacts:** S3 ETL (without Temporal) including windowing.
 **Tests:**
 
@@ -255,9 +257,9 @@ Each phase includes: scope, artifacts, tests, and the **checklist that CI must p
 * SSE; explicit deadlines; request facet; respond bridge.
 * Multipart upload and large body streaming tests.
 
-**`host-queue-redis`**
+**`bridge-queue-redis`**
 
-* Visibility timeout semantics; at‑least‑once + dedupe.
+* Visibility timeout semantics; at‑least-once + dedupe.
 * Rate limiter per node; fairness scheduling.
 
 **`host-temporal`**

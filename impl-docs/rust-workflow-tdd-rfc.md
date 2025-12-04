@@ -365,7 +365,7 @@ struct IdempotencyKeySpec {
 - `BufferPolicy`: explicit queue budget (`max_items`, `spill_threshold_bytes`, `spill: BlobTier`, `on_drop`). Profiles provide maxima; flows can request tighter bounds.
 - `ScheduleHints`: `batch: BatchPolicy`, `concurrency: NonZeroU16`, `timeout: Duration` surfaced from macros (`timeout!`) or profile defaults.
 - `RetryOwner`: `Connector`, `Orchestrator`, or `None`; determines which layer owns retry semantics.
-- `IdempotencySpec`: `key: KeyExpr`, `scope: IdemScope` (Node | Edge | Partition). Keys must reference deterministic fields only; lints flag unstable expressions.
+- `IdempotencySpec`: `key: KeyExpr`, `scope: IdemScope` (Node | Edge | Partition), `ttl_ms: u64`. Keys must reference deterministic fields only; TTL must satisfy host minimums (currently 300_000ms for queue bridges).
 - `IdempotencyKeySpec`: canonical description of key encoding/hashing and deterministic field selection; see §5.2.1.
 - `StateModel`: `None`, `Ephemeral`, or `Durable { consistency: Local | Global, ttl: Option<Duration>, version: SchemaVersion }`. Durable nodes require migration hooks (§5.5).
 - `CompensationSpec`: maps to a compensating node/subflow plus timeout budget for SAGA unwinds.
@@ -537,6 +537,7 @@ pub trait Cache: Capability {
 - `DedupeStore` implementers publish durability guarantees (multi-AZ, journaling) and purge schedules; execution runtimes reject `Delivery::ExactlyOnce` if the capability is absent.
 - `Cache` implementers expose tier and eviction policy metadata so policy can enforce where Stable/Strict caches live.
 - Facets are immutable snapshots of request context; mutations must flow through explicit capabilities to avoid hidden side-effects.
+- `capabilities` crate ships in-memory scaffolds (`MemoryKv`, `MemoryBlobStore`, `MemoryQueue`, `MemoryCache`) for unit tests and local runs. Production adapters (Workers KV/R2, Neon/Postgres, durable queues) plug into the same traits so Flow IR metadata and validator hints stay consistent regardless of backend.
 
 #### 6.3.1 Capability versioning & compatibility
 - Capabilities advertise `(name, semver)`; Flow IR records required ranges on each node binding. Hosts must provide compatible versions at deploy time; otherwise validator `CAPV101 IncompatibleCapabilityVersion` fires.
@@ -546,7 +547,8 @@ pub trait Cache: Capability {
 ### 6.4 Host adapters
 - **Tokio engine:** In-process scheduler, fluent for dev and unit tests.
 - **Queue/Redis:** HTTP/webhook front-end enqueues items; workers use `ActivityRuntime` to run nodes, ensure idempotency, ack results.
-- **Axum adapter:** Binds triggers to HTTP routes; injects `RequestScope`; handles `Respond` bridging with oneshot channels; allows session/middleware outside kernel.
+- **Axum adapter:** Binds triggers to HTTP routes; injects `RequestScope`; handles `Respond` bridging with oneshot channels; allows session/middleware outside kernel. This adapter is a fully-fledged web host—teams can deploy it as their own HTTP server. For platform-managed offerings we layer an invocation gateway (see below) that fronts the same executor while adding tenancy-aware routing, throttling, audit, and metering.
+- **Invocation gateway (managed ingress):** Optional control-plane service we operate for paid tiers. Provides elastic ingress endpoints (invoke, poll, stream) that forward to the appropriate runtime profile (inline Axum, queue workers, WASM edge). Handles authentication, per-tenant quotas, cost attribution, and automatic cold-start mitigation. Self-hosted deployments can skip this layer and run the Axum adapter directly; managed tenants get the gateway as their hardened entrypoint.
 - **WASM host:** Executes WIT-defined nodes; capabilities exposed via WIT handles; strict allowlist (no network unless declared).
 - **Python/gRPC host:** `plugin-python` crate starts gRPC subprocess; nodes call remote functions (with schema handshake).
 - **Temporal adapter:** Converts Flow IR pipelines to Temporal workflows (Go/TS) plus activities; we run a Rust activity worker using our Node runtime.
@@ -554,6 +556,8 @@ pub trait Cache: Capability {
 #### 6.4.1 Web streaming & cancellation
 - Web profile supports streaming responses via Server-Sent Events (SSE), chunked HTTP/1.1 transfer, and WebSocket bridging. `Respond(stream = true)` wires edge backpressure to HTTP body writes with 64 KiB default chunks.
 - Client disconnects propagate a cancellation token; nodes observe `ctx.is_cancelled()` and should cease work promptly. Cancel events emit `WEB201 ClientDisconnected` telemetry.
+- Kernel returns an `ExecutionResult` (`Value` | `Stream`). `StreamHandle` owns the active `FlowInstance`, closes over the node cancellation token, and drops the semaphore permit only when the consumer finishes or disconnects. Hosts map the handle into transport-specific streaming (Axum → SSE body).
+- CLI adds `--stream` for local runs; streaming examples (e.g., S2 site telemetry) error when invoked without the flag to avoid accidental truncation. `flows run serve` exposes `/site/stream` and forwards JSON payloads to the trigger before switching the HTTP response into SSE mode.
 - Multipart uploads/downloads stream directly to BlobStore (chunk size ≤ 8 MiB, configurable). Determinism downgrades to `BestEffort` unless payloads are hashed and referenced via `HashRef`.
 
 ### 6.5 Scheduling & backpressure
@@ -677,6 +681,7 @@ Strict < Stable < BestEffort < Nondeterministic
 - Compile-time: macros derive defaults; authors can tighten if compliant. Lints detect contradictions (Clock/Rng without seed, unpinned HTTP) and emit DET30x errors. Missing idempotency on effectful nodes fails DAG004.
 - Shared registry: `dag_core::determinism` exposes the canonical map of resource hints (e.g., `resource::clock`, `resource::rng`) to minimum determinism levels. Macros and plugins record hints when they detect sensitive resources; the validator raises `DET302` if a node claims a stricter level than the registry permits. Crates can extend the registry at runtime to cover new capability families without modifying the core runtime.
 - Effect registry: `dag_core::effects_registry` mirrors the determinism flow for side-effects. Built-in hints cover HTTP/database writes; connectors register additional hints (e.g., `connector::stripe::charge`). Validation emits `EFFECT201` when a node claims `Pure`/`ReadOnly` despite the registry requiring `Effectful`. Defaults remain pessimistic; authors must opt in to stronger guarantees consciously.
+- Canonical hints seeded in the runtime today: `resource::http::{read,write}`, `resource::db::{read,write}`, `resource::kv::{read,write}`, `resource::blob::{read,write}`, `resource::queue::{publish,consume}`, `resource::clock`, and `resource::rng`. Platform adapters (Workers KV/R2, Neon/Postgres, Durable Objects, etc.) register additional aliases so validators and Studio surface accurate policies automatically.
 - Build-time: capability typestates reject misuse (e.g., calling `HttpRead::get` inside a `Strict` node). The compiler prevents linking ReadOnly nodes against write traits.
 - Registry-time: certification executes record/replay—`Strict` must be byte-identical, `Stable` must emit identical logical results with pinned references (hash recorded). Failures block publish.
 - Runtime: policy engine enforces tenant rules (e.g., forbid `BestEffort` in financial orgs) and can require HITL or caching for downgraded segments.
@@ -912,11 +917,12 @@ flows template connector --provider openai
 - PII tags trigger automatic redaction; non-public fields are masked unless explicit audit policy allows exposure.
 
 ### 14.2 Metrics
-- Node-level latency/throughput, queue depth, retry counts.
-- Workflow-level metrics: active runs, success/failure, approval latency.
-- Exposed via OpenTelemetry; can integrate with Prometheus/DataDog.
-- Cardinality controls: metric label allowlist prohibits raw IDs; exemplars carry sample run IDs instead.
-- Profiles set hard caps (≤100 distinct partition labels / 5 min window by default); overages drop labels and surface WARN `METRIC201 CardinalityExceeded` while emitting exemplars.
+- Instrumentation catalog lives in `impl-docs/metrics.md`; all names are prefixed `latticeflow.*`.
+- Executors emit gauges/counters/histograms for active nodes, queue depth, node latency, cancellations, capture backpressure, and stream client counts (`latticeflow.executor.*`).
+- Hosts expose HTTP request totals/latency, in-flight gauges, SSE client gauges, and deadline breaches (`latticeflow.host.*`).
+- CLI runs surface per-node success/failure counters and capture totals plus an aggregated table/`--json` snapshot (`latticeflow.cli.*`).
+- Telemetry rides OpenTelemetry + `metrics` and can export to Prometheus/DataDog. Default recorder is no-op; features unlock exporters.
+- Cardinality controls: metric label allowlist prohibits raw IDs; exemplars carry hashed run IDs instead. Profiles cap labels (≤100 distinct values per 5 min); overages drop labels and emit WARN `METRIC201 CardinalityExceeded` while keeping exemplars.
 
 ### 14.3 Tracing
 - Span per node execution; context propagation across edges and connectors.
