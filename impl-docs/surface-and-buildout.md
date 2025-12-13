@@ -3,6 +3,9 @@ Purpose: notes
 Owner: Core
 Last reviewed: 2025-12-12
 
+NOTE: This document is canonical for **Section A (workspace layout + layering)**.
+Other sections are historical design notes and MUST NOT override the 0.1 contract specs (`impl-docs/spec/*`) or the roadmap-of-record (`impl-docs/roadmap/epics.md`).
+
 ## A. Workspace layout (authoritative)
 
 ```
@@ -52,9 +55,9 @@ Last reviewed: 2025-12-12
 
 ---
 
-## B. Public API surfaces (stable-to-agents)
+## B. Public API surfaces (historical; non-normative)
 
-> Agents interact primarily via these crates; keep their APIs stable and well‑documented.
+> Historical notes from early planning. Treat as non-normative; contract surfaces live in `impl-docs/spec/*`.
 
 ### B1. `dag-core` (foundation)
 
@@ -133,7 +136,7 @@ pub trait DedupeStore: Capability { fn put_if_absent(&self,key:&[u8],ttl:Duratio
 
 ## C. Features & MSRV
 
-* **MSRV:** 1.77 (document it; bump via RFC).
+* **MSRV:** 1.90 (bump via ADR; keep in sync with workspace `Cargo.toml`).
 * **Cargo features** (top‑level):
 
   * `web` (enables `host-web-axum`, SSE, multipart)
@@ -148,9 +151,10 @@ pub trait DedupeStore: Capability { fn put_if_absent(&self,key:&[u8],ttl:Duratio
 
 ---
 
-## D. Buildout phases with **Definitions of Done** (DoD)
+## D. Buildout phases with Definitions of Done (archived)
 
-Each phase includes: scope, artifacts, tests, and the **checklist that CI must pass** before merge.
+This phased plan is archived/superseded by the roadmap-of-record: `impl-docs/roadmap/epics.md`.
+Use it only for historical context.
 
 ### Phase 0 — **Scaffold & CI**
 

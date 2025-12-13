@@ -9,6 +9,7 @@ Goal
 - Define the 0.1.x "stable surface" so hosts, importers, agents, and UI can rely on:
   - Flow IR semantics and compatibility
   - Invocation ABI and result/error envelopes
+  - Diagnostics contract (stable codes + stable host error envelope + `lf.*` metadata conventions)
   - A minimal but semantics-bearing macro/control-surface set
   - Trigger/entrypoint wiring rules
 
@@ -44,7 +45,8 @@ Phases (ticket-sized)
 
 Acceptance gates
 - Unit tests verifying invocation part roundtrip (bridge safety).
-- Axum host produces stable JSON error envelopes for all `ExecutionError` variants.
+- Host conformance (reference: Axum): stable JSON error envelopes for all `ExecutionError` variants.
+- Host conformance: reserved surfaces rejected deterministically with `CTRL901` (no silent ignore).
 
 01.2 Capability preflight (domain-level, 0.1)
 - Implement a host-level preflight that derives required capability domains from Flow IR hints.
@@ -72,11 +74,11 @@ Acceptance gates
   - `on_error!`, `rate_limit!`, `partition_by!`, `for_each!`, `window!`, `await!`
 - In 0.1:
   - allow structural validation
-  - runtime may reject deterministically if unimplemented
+  - runtime may reject deterministically if unimplemented (see `CTRL901`)
 
 Acceptance gates
 - Spec is complete and referenced by macro docs.
-- Validator produces a stable diagnostic for "unsupported control surface" if runtime cannot execute.
+- Runtime rejection for unsupported reserved surfaces is deterministic (`CTRL901`).
 
 01.5 Triggers and entrypoints (wiring rules)
 - Keep trigger nodes in Flow IR (`NodeKind::Trigger`).

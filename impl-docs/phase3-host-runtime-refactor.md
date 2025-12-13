@@ -26,29 +26,31 @@ Last reviewed: 2025-12-12
 - **Compute Host Runtime (`host-inproc`)** — reusable crate that accepts an `Invocation`, loads/instantiates the flow, injects runtime capabilities, and drives execution. Emits telemetry and surfaces results/errors.  
 - Bridges compose with the runtime; bridges may run in the same process (Axum) or forward to remote workers.
 
-### 3.2 Key Traits & Types (initial sketch)
+### 3.2 Key Traits & Types (updated sketch)
+
+Note: In 0.1.x, **flow selection is out-of-band** (deployment/host config). Flow identity is carried for observability via metadata (e.g. `lf.flow_id`), not as an invocation field.
+
 ```rust
-pub struct Invocation {
-    pub flow_id: FlowId,
+pub struct InvocationParts {
     pub trigger_alias: String,
     pub capture_alias: String,
     pub payload: serde_json::Value,
+    pub deadline: Option<std::time::SystemTime>,
     pub metadata: InvocationMetadata,
 }
 
 pub trait InvocationBridge {
     type Error;
-    async fn next_invocation(&mut self) -> Result<Invocation, BridgeOutcome<Self::Error>>;
+    async fn next_invocation(&mut self) -> Result<InvocationParts, BridgeOutcome<Self::Error>>;
 }
 
 pub struct HostRuntime {
     executor: FlowExecutor,
     registry: Arc<NodeRegistry>,
-    // capability factories, metrics handles, etc.
 }
 
 impl HostRuntime {
-    pub async fn execute(&self, invocation: Invocation) -> RunResult;
+    pub async fn execute(&self, invocation: InvocationParts) -> RunResult;
 }
 ```
 

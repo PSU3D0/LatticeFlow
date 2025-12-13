@@ -5,7 +5,9 @@ Last reviewed: 2025-12-12
 
 # Epics (DRAFT)
 
-This is the working roadmap. Each epic is a deliverable that can ship value.
+This is the roadmap-of-record. If another doc disagrees on priorities or sequencing, treat that other doc as non-canonical.
+
+Each epic is a deliverable that can ship value.
 Each epic is decomposed into phases; phases should be ticket-sized and test-gated.
 
 Assumption: Workers-native execution is acceptable as the near-term target.

@@ -9,6 +9,10 @@ NOTE: Draft scenario notes for the Workers track. Canonical epic docs:
 
 # Cloudflare Workers Integration — User Stories
 
+Scope note:
+- 0.1.x targets: (1) run S1/S2a parity on Workers (HTTP + SSE), and (4) baseline observability parity.
+- KV/R2/Queues/Neon/HITL-related stories are backlog until Epic 02/03/05 scopes are complete.
+
 ## 1. Edge Workflow Publisher
 - **As** a platform engineer deploying global workflows  
 - **I want** to compile my Flow IR into a Workers deployment  
