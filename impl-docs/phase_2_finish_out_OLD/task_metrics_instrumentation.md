@@ -1,3 +1,8 @@
+Status: Archived
+Purpose: notes
+Owner: Core
+Last reviewed: 2025-12-12
+
 # Task Brief — Runtime Metrics & Observability
 
 ## Goal

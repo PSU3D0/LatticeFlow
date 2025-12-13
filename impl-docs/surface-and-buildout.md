@@ -1,3 +1,8 @@
+Status: Canonical
+Purpose: notes
+Owner: Core
+Last reviewed: 2025-12-12
+
 ## A. Workspace layout (authoritative)
 
 ```

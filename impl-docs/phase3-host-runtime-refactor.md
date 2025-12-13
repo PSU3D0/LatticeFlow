@@ -1,3 +1,8 @@
+Status: Draft
+Purpose: epic
+Owner: Runtime
+Last reviewed: 2025-12-12
+
 # Phase 3 Preview — Bridge/Host Refactor Plan
 
 > Status (2024-XX-XX): baseline split completed — `host-inproc` crate exists, `host-web-axum` now consumes it, and `EnvironmentPlugin` hooks are available for platform-specific capability injection. Remaining notes capture follow-on work (bridge catalog, remote workers) to revisit during Phase 3.

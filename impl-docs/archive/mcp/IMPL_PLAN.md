@@ -1,3 +1,10 @@
+Status: Archived
+Purpose: notes
+Owner: Integrations
+Last reviewed: 2025-12-12
+
+NOTE: Archived. Not on the current roadmap; expect major redesign if revived.
+
 # MCP Plugin Implementation Plan
 
 ## Phase 0 — Research & Alignment
@@ -43,7 +50,7 @@
 - Tests: CLI integration (`flows gateway mcp serve --example s1_echo`) once gateway CLI exists.
 
 ## Phase 5 — Documentation & Developer Experience
-- Author `impl-docs/mcp/USER_STORIES.md` scenarios, README updates, tutorial showing MCP integration.
+- Author `impl-docs/archive/mcp/USER_STORIES.md` scenarios, README updates, tutorial showing MCP integration.
 - Provide template project (similar to Workers templates) demonstrating plugin usage.
 - Validate `cargo doc` for plugin crate; ensure docs.rs friendly.
 

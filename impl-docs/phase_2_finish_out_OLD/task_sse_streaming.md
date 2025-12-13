@@ -1,3 +1,8 @@
+Status: Archived
+Purpose: notes
+Owner: Core
+Last reviewed: 2025-12-12
+
 # Task Brief — SSE Streaming (Phase 2 Gap)
 
 **Status: Completed.** Executor streams now surface as `ExecutionResult::Stream`, `host-web-axum` promotes captures to SSE, `flows run local --stream`/`flows run serve` cover S2, and docs/schema snapshots have been updated.

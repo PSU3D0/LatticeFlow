@@ -1,3 +1,8 @@
+Status: Canonical
+Purpose: spec
+Owner: Core
+Last reviewed: 2025-12-12
+
 # Runtime Metrics Catalog
 
 Use this catalog whenever we add instrumentation to executors, hosts, or tooling. All metric names live under the `latticeflow.*` namespace and follow OpenTelemetry semantic conventions where possible.

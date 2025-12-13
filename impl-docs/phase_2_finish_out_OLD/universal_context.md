@@ -1,3 +1,8 @@
+Status: Archived
+Purpose: notes
+Owner: Core
+Last reviewed: 2025-12-12
+
 # Current Task — Universal Context
 
 Use this brief to get oriented before tackling any follow-on work.

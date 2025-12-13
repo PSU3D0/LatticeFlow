@@ -1,3 +1,12 @@
+Status: Draft
+Purpose: scenario
+Owner: Runtime
+Last reviewed: 2025-12-12
+
+NOTE: Draft scenario notes for the Workers track. Canonical epic docs:
+- `impl-docs/roadmap/epic-02-workers-host-minimal.md`
+- `impl-docs/roadmap/epic-03-cloudflare-caps-minimal.md`
+
 # Cloudflare Workers Integration — User Stories
 
 ## 1. Edge Workflow Publisher

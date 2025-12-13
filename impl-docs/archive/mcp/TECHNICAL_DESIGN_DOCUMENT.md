@@ -1,3 +1,10 @@
+Status: Archived
+Purpose: notes
+Owner: Integrations
+Last reviewed: 2025-12-12
+
+NOTE: Archived. Not on the current roadmap; expect major redesign if revived.
+
 # Model Context Protocol Plugin — Technical Design
 
 ## Purpose & Scope

@@ -1,3 +1,8 @@
+Status: Draft
+Purpose: epic
+Owner: Capabilities
+Last reviewed: 2025-12-12
+
 # OpenDAL Capability Integration — Phased Plan
 
 > Roadmap for introducing OpenDAL-backed capability crates while preserving the capability contracts defined in `impl-docs/impl-plan.md` Phase 3 and the platform-specific affordances described in `impl-docs/cloudflare`. Each phase is deliverable on its own (no interdependencies beyond prior phases) and results in user-visible documentation and tests.
