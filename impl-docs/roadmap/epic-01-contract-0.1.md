@@ -54,6 +54,12 @@ Acceptance gates
 
 Acceptance gates
 - A flow that requires a domain (e.g., dedupe/kv/http_write) fails preflight when `ResourceBag` lacks it.
+- Host surfaces stable error code `CAP101` for missing capability bindings.
+
+Learnings / notes (01.2)
+- Derive required capability domains from Flow IR `effectHints[]` only (avoid `determinismHints[]` pulling clock/RNG-like requirements).
+- Treat unknown `resource::*` effect hints as missing (fail-fast) so new domains cannot silently ship without bindings.
+- Runtime-level preflight inside `HostRuntime::execute` is simplest for correctness; hosts MAY also preflight at startup to fail before serving traffic.
 
 01.3 Macro primitives v0 (semantics-bearing subset)
 - Add macro surface for edge-native controls:
