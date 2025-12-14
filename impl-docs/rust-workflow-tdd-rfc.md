@@ -3,18 +3,18 @@ Purpose: spec
 Owner: Core
 Last reviewed: 2025-12-12
 
-# LatticeFlow RFC (Umbrella)
+# Lattice RFC (Umbrella)
 
-This file is the umbrella RFC for LatticeFlow.
+This file is the umbrella RFC for Lattice.
 
 It is intentionally short. Canonical semantics live in `impl-docs/spec/` and irreversible decisions live in `impl-docs/adrs/`.
 
 Historical longform RFC (pre-consolidation):
 - `impl-docs/archive/rust-workflow-tdd-rfc-longform-2025-09-18.md`
 
-## What Is LatticeFlow
+## What Is Lattice
 
-LatticeFlow is a Rust-first workflow platform where:
+Lattice is a Rust-first workflow platform where:
 - workflows are represented as a typed-ish Flow IR DAG
 - nodes declare effects/determinism/idempotency
 - capabilities are injected at the host boundary (provider-agnostic node code)

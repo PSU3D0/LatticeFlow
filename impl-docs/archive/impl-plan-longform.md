@@ -3,7 +3,7 @@ Purpose: notes
 Owner: Core
 Last reviewed: 2025-12-12
 
-# Implementation Plan — LatticeFlow v1 Foundations
+# Implementation Plan — Lattice v1 Foundations
 
 NOTE: Archived longform snapshot. Canonical roadmap is `impl-docs/roadmap/epics.md`.
 
@@ -78,7 +78,7 @@ NOTE: Archived longform snapshot. Canonical roadmap is `impl-docs/roadmap/epics.
 
 **Exit criteria**
 - `flows run local` executes S1 within latency budget, and `flows run serve` hosts S2 with SSE smoke tests.
-- Executor/host metrics (`latticeflow.executor.*`, `latticeflow.host.*`) and CLI summaries (`--json` + stderr text) land per RFC §14.
+- Executor/host metrics (`lattice.executor.*`, `lattice.host.*`) and CLI summaries (`--json` + stderr text) land per RFC §14.
 
 **CLI milestone**: first `flows run local` success.
 

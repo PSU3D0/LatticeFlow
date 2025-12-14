@@ -925,10 +925,10 @@ flows template connector --provider openai
 - PII tags trigger automatic redaction; non-public fields are masked unless explicit audit policy allows exposure.
 
 ### 14.2 Metrics
-- Instrumentation catalog lives in `impl-docs/metrics.md`; all names are prefixed `latticeflow.*`.
-- Executors emit gauges/counters/histograms for active nodes, queue depth, node latency, cancellations, capture backpressure, and stream client counts (`latticeflow.executor.*`).
-- Hosts expose HTTP request totals/latency, in-flight gauges, SSE client gauges, and deadline breaches (`latticeflow.host.*`).
-- CLI runs surface per-node success/failure counters and capture totals plus an aggregated table/`--json` snapshot (`latticeflow.cli.*`).
+- Instrumentation catalog lives in `impl-docs/metrics.md`; all names are prefixed `lattice.*`.
+- Executors emit gauges/counters/histograms for active nodes, queue depth, node latency, cancellations, capture backpressure, and stream client counts (`lattice.executor.*`).
+- Hosts expose HTTP request totals/latency, in-flight gauges, SSE client gauges, and deadline breaches (`lattice.host.*`).
+- CLI runs surface per-node success/failure counters and capture totals plus an aggregated table/`--json` snapshot (`lattice.cli.*`).
 - Telemetry rides OpenTelemetry + `metrics` and can export to Prometheus/DataDog. Default recorder is no-op; features unlock exporters.
 - Cardinality controls: metric label allowlist prohibits raw IDs; exemplars carry hashed run IDs instead. Profiles cap labels (≤100 distinct values per 5 min); overages drop labels and emit WARN `METRIC201 CardinalityExceeded` while keeping exemplars.
 

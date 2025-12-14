@@ -5,9 +5,9 @@ Last reviewed: 2025-12-12
 
 # Runtime Metrics Catalog
 
-Use this catalog whenever we add instrumentation to executors, hosts, or tooling. All metric names live under the `latticeflow.*` namespace and follow OpenTelemetry semantic conventions where possible.
+Use this catalog whenever we add instrumentation to executors, hosts, or tooling. All metric names live under the `lattice.*` namespace and follow OpenTelemetry semantic conventions where possible.
 
-## Executor (`latticeflow.executor.*`)
+## Executor (`lattice.executor.*`)
 - `active_nodes` (gauge, labels: `flow`, `profile`): current number of in-flight node tasks.
 - `queue_depth` (gauge, labels: `flow`, `edge`): buffered messages per edge channel.
 - `node_latency_ms` (histogram, labels: `flow`, `node`, `profile`): wall-clock duration for a node invocation.
@@ -16,20 +16,20 @@ Use this catalog whenever we add instrumentation to executors, hosts, or tooling
 - `capture_backpressure_ms` (histogram, labels: `flow`, `capture`): time producers spent blocked waiting for downstream consumers.
 - `stream_clients_total` (counter, labels: `flow`, `node`): number of streaming clients spawned by node captures.
 
-## Host (Axum) (`latticeflow.host.*`)
+## Host (Axum) (`lattice.host.*`)
 - `http_requests_total` (counter, labels: `host`, `flow`, `route`, `status_class`).
 - `http_request_latency_ms` (histogram, labels: `host`, `flow`, `route`).
 - `http_inflight_requests` (gauge, labels: `host`, `flow`, `route`).
 - `sse_clients` (gauge, labels: `host`, `flow`, `route`): currently connected SSE clients.
 - `deadline_exceeded_total` (counter, labels: `host`, `flow`, `route`).
 
-## CLI (`latticeflow.cli.*`)
+## CLI (`lattice.cli.*`)
 - `run_duration_ms` (histogram, labels: `flow`, `example`).
 - `nodes_succeeded_total` / `nodes_failed_total` (counter, labels: `flow`, `node`).
 - `captures_emitted_total` (counter, labels: `flow`, `node`, `capture`).
 - JSON summary output mirrors these aggregates for scripting.
 
-## Queue Bridge (`latticeflow.queue.*`)
+## Queue Bridge (`lattice.queue.*`)
 - `enqueued_total` / `dequeued_total` (counter, labels: `bridge`, `queue`).
 - `success_total` / `failure_total` (counter, labels: `bridge`, `queue`).
 - `requeued_total` / `duplicates_total` (counter, labels: `bridge`, `queue`).

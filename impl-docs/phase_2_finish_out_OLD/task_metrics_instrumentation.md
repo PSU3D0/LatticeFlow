@@ -40,5 +40,5 @@ Implement the “richer metrics” slice promised in Phase 2: expose executor,
 
 ## Notes
 - Keep the API surface minimal: return internal handles or guard objects for timing (e.g., RAII span for node execution).  
-- Align naming conventions with OpenTelemetry best practices (`latticeflow.*` namespace).  
+- Align naming conventions with OpenTelemetry best practices (`lattice.*` namespace).  
 - Coordinate with future cache/dedupe metrics (Phase 3) to avoid naming conflicts.
