@@ -71,9 +71,13 @@ Learnings / notes (01.2)
   - `kernel-exec` respects routing (only schedule selected branch)
 
 Acceptance gates
-- trybuild tests for macro syntax.
-- `kernel-plan` validates surface structure.
+- trybuild tests for macro syntax (`timeout!` emits `EdgeIR.timeout_ms`).
+- `kernel-plan` validates surface structure (e.g., `CTRL101` for invalid timeout budgets).
 - `kernel-exec` either executes `if/switch` correctly or fails deterministically (no silent ignore).
+
+Learnings / notes (01.3)
+- `timeout!` is edge-scoped and must reference an existing `connect!` edge; do not allow implicit edge creation.
+- Validation should reject nonsensical values (`timeout_ms = 0`) even if runtimes don’t enforce timeouts yet.
 
 01.4 Reserved surfaces (spec now, runtime later)
 - Define stable config shapes for:
