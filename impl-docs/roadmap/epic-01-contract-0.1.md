@@ -71,8 +71,8 @@ Learnings / notes (01.2)
   - `kernel-exec` respects routing (only schedule selected branch)
 
 Acceptance gates
-- trybuild tests for macro syntax (`timeout!` emits `EdgeIR.timeout_ms`).
-- `kernel-plan` validates surface structure (e.g., `CTRL101` for invalid timeout budgets).
+- trybuild tests for macro syntax (`timeout!`/`delivery!`/`buffer!`/`spill!` emit `EdgeIR` controls).
+- `kernel-plan` validates surface structure (e.g., `CTRL101`/`CTRL102` for invalid edge budgets).
 - `kernel-exec` either executes `if/switch` correctly or fails deterministically (no silent ignore).
 
 Learnings / notes (01.3)
