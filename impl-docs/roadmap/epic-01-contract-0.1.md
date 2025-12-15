@@ -86,6 +86,11 @@ Learnings / notes (01.3)
   - allow structural validation
   - runtime may reject deterministically if unimplemented (see `CTRL901`)
 
+Learnings / notes (01.4)
+- `Partition` is metadata-only in 0.1 (canonical is `EdgeIR.partition_key`); runtime must not reject or change behavior.
+- `ForEach` remains reserved; structural validation should require an explicit `source -> body_entry` edge so delivery/buffer/timeout semantics stay attached to edges.
+- `await` is checkpoint-based in 0.1; do not add a new `ControlSurfaceKind` until runtime semantics are ready.
+
 Acceptance gates
 - Spec is complete and referenced by macro docs.
 - Runtime rejection for unsupported reserved surfaces is deterministic (`CTRL901`).
