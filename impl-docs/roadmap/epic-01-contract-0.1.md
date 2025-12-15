@@ -99,6 +99,7 @@ Acceptance gates
 - Keep trigger nodes in Flow IR (`NodeKind::Trigger`).
 - Define deployment-side entrypoint config rules:
   - trigger alias, capture alias, deadline, route/event binding
+- Enforce agent-safety default: single trigger node per flow unless `policies.lint.allow_multiple_triggers=true`.
 - Optionally package an entrypoints manifest as a `FlowIR.artifacts[]` sidecar (no IR schema changes required).
 
 Acceptance gates
