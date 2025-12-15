@@ -52,6 +52,10 @@ Acceptance gates
 Risks
 - "Sequencing" is correctness-critical. Prefer a single-writer primitive (Durable Objects) over eventual KV.
 
+Learnings / notes (03.x)
+- Workers KV may satisfy `resource::kv` but its eventual consistency is incompatible with some flow modes; capability providers must expose metadata (consistency/TTL/etc) so hosts can reject "present but incompatible" bindings during preflight.
+- Keep flows resource-agnostic: requirements are expressed in `resource::*` domains + portable invariants; provider choice and infra provisioning remain deployment concerns.
+
 References
 - Capability hint registry: `crates/capabilities/src/lib.rs`, `crates/capabilities/src/hints.rs`
 - Cloudflare plans: `impl-docs/cloudflare/IMPL_PLAN.md`
