@@ -60,6 +60,8 @@ Learnings / notes (01.2)
 - Derive required capability domains from Flow IR `effectHints[]` only (avoid `determinismHints[]` pulling clock/RNG-like requirements).
 - Treat unknown `resource::*` effect hints as missing (fail-fast) so new domains cannot silently ship without bindings.
 - Runtime-level preflight inside `HostRuntime::execute` is simplest for correctness; hosts MAY also preflight at startup to fail before serving traffic.
+- Keep resolver and binder separate: resolver produces `bindings.lock.json` deterministically from Flow IR + catalog; binder constructs runtime providers and resolves secrets.
+- Multi-tenant isolation can be modeled either as isolation wrappers or as composite provider kinds ("zero trust" providers). If per-flow config is needed, prefer derived instances in the lockfile in 0.1.
 
 01.3 Macro primitives v0 (semantics-bearing subset)
 - Add macro surface for edge-native controls:
